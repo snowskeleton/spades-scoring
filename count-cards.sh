@@ -117,9 +117,9 @@ function accept_bid {
   echo -n "What is $player's bid? "
   read bid 
 
+  sqlite3 playerbase.db "UPDATE players SET bid = '$bid' WHERE rowID IS '$bidder'"
   case $bid in
    [1-9]|1[0-3])
-    sqlite3 playerbase.db "UPDATE players SET bid = '$bid' WHERE rowID IS '$bidder'"
      ((num=num+1)) && ((bidder=bidder+1))
     ;;
     0)
@@ -172,11 +172,11 @@ done
  echo
 }
 
-function gather_bid {
+function count_tricks {
  num=1
  ((bidder=dealer_count+1))
 
- while [[ $num -le $player_count ]]; do
+ while [[ $num -le $player_count ]]; do #
 
   if [[ $bidder -gt $player_count ]]; then bidder=1; fi
 
@@ -196,12 +196,14 @@ function gather_bid {
     echo -n "Let's try that again. "
   esac
 
+done
+
+ echo
  for team in ${team_array}; do
   total_tricks=$(sqlite3 playerbase.db "SELECT SUM(tricks_taken) FROM players WHERE team IS '$team'")
   sqlite3 playerbase.db "UPDATE teams SET tricks_taken = '$total_tricks' WHERE name IS '$team'"
+  echo "Team $team took $total_tricks."
  done
-
-done
 }
 
 function calculate_scores {
@@ -240,6 +242,14 @@ echo
 
  if [[ $total_tricks -ge $total_bid ]]; then
   sqlite3 playerbase.db "UPDATE teams SET score=score+'$total_bid'*10+('$total_tricks'-'$total_bid') WHERE name IS '$team'"
+  if [[ $total_tricks -gt $total_bid ]]; then
+   sqlite3 playerbase.db "UPDATE teams SET bags=bags+('$total_tricks'-'$total_bid') WHERE name IS '$team'"
+   total_bags=$(sqlite3 playerbase.db "SELECT bags FROM teams WHERE name IS '$team'")
+   if [[ $total_bags -ge 10 ]]; then
+    sqlite3 playerbase.db "UPDATE teams SET score=score-100 WHERE name IS '$team'"
+    sqlite3 playerbase.db "UPDATE teams SET bags=0 WHERE name IS '$team'"
+   fi
+  fi
 
  else
   sqlite3 playerbase.db "UPDATE teams SET score=score-('$total_bid'*10) WHERE name IS '$team'"
@@ -273,7 +283,7 @@ gather_players
 while [[ ($team_one_score -lt $final_score && $team_two_score -lt $final_score) || $team_one_score -eq $team_two_score ]]; do
 set_dealer
 accept_bid
-gather_bid
+count_tricks
 calculate_scores
 done
 
