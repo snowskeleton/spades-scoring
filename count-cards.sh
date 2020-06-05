@@ -103,6 +103,7 @@ function set_dealer() {
   dealer=$(sqlite3 playerbase.db "SELECT name FROM players ORDER BY RANDOM() limit 1")
   dealer_count=$(sqlite3 playerbase.db "SELECT rowID FROM players WHERE name IS '$dealer'")
   echo -e "\n$dealer is dealing the first round\n"
+
  fi
 }
 
@@ -142,6 +143,7 @@ function accept_bid {
   ;;
   back|oops|no)
    if [[ num -gt 1 ]]; then ((num=num-1)) && ((bidder=bidder-1)); else echo -n "We're just getting started. "; fi
+   if [[ $bidder -lt 1 ]]; then bidder=$player_count; fi
   ;;
   *)
    echo -n "Let's try that again. "
@@ -177,7 +179,7 @@ function count_tricks {
  num=1
  ((bidder=dealer_count+1))
 
- while [[ $num -le $player_count ]]; do #
+ while [[ $num -le $player_count ]]; do
 
   if [[ $bidder -gt $player_count ]]; then bidder=1; fi
 
@@ -191,8 +193,9 @@ function count_tricks {
      ((num=num+1)) && ((bidder=bidder+1))
     ;;
    back|oops|no)
-# this line is good
+    #if [[ bidder -eq 1 ]]; then bidder=$player_count; else ((bidder=bidder-1))
     if [[ num -gt 1 ]]; then ((num=num-1)) && ((bidder=bidder-1)); else echo -n "We're just getting started. "; fi
+    if [[ $bidder -lt 1 ]]; then bidder=$player_count; fi
    ;;
    *)
     echo -n "Let's try that again. "
