@@ -46,7 +46,7 @@ sqlite3 playerbase.db "CREATE TABLE IF NOT EXISTS teams
 (name TEXT,
 total_bid INT,
 tricks_taken INT,
-bags INT,
+bags INT DEFAULT 0,
 score INT DEFAULT 0)"
 
 else
@@ -109,6 +109,7 @@ function set_dealer() {
 function accept_bid {
  num=1
  ((bidder=dealer_count+1))
+
  while [[ $num -le $player_count ]]; do
 
   if [[ $bidder -gt 4 ]]; then bidder=1; fi
@@ -117,27 +118,27 @@ function accept_bid {
   echo -n "What is $player's bid? "
   read bid 
 
-  sqlite3 playerbase.db "UPDATE players SET bid = '$bid' WHERE rowID IS '$bidder'"
   case $bid in
    [1-9]|1[0-3])
+     sqlite3 playerbase.db "UPDATE players SET bid = '$bid' WHERE rowID IS '$bidder'"
      ((num=num+1)) && ((bidder=bidder+1))
     ;;
     0)
    echo -n "Is $player blind? "
    read answer
 
-   case $answer in
-   	yes|y|ye|yse|esy|eys|0)
-    sqlite3 playerbase.db "UPDATE players SET blind = 1 WHERE rowID IS '$bidder'"
-    echo "Let's hope they're psychic."
-   ;;
-   *)
-    sqlite3 playerbase.db "UPDATE players SET blind = 0 WHERE rowID IS '$bidder'"
-    echo "Player has vision."
-   ;;
-   esac
+    case $answer in
+   	 yes|y|ye|yse|esy|eys|0)
+     sqlite3 playerbase.db "UPDATE players SET blind = 1 WHERE rowID IS '$bidder'"
+     echo "Let's hope they're psychic."
+    ;;
+    *)
+     sqlite3 playerbase.db "UPDATE players SET blind = 0 WHERE rowID IS '$bidder'"
+     echo "Player has vision."
+    ;;
+    esac
 
-   ((num=num+1)) && ((bidder=bidder+1))
+    ((num=num+1)) && ((bidder=bidder+1))
   ;;
   back|oops|no)
    if [[ num -gt 1 ]]; then ((num=num-1)) && ((bidder=bidder-1)); else echo -n "We're just getting started. "; fi
@@ -190,6 +191,7 @@ function count_tricks {
      ((num=num+1)) && ((bidder=bidder+1))
     ;;
    back|oops|no)
+# this line is good
     if [[ num -gt 1 ]]; then ((num=num-1)) && ((bidder=bidder-1)); else echo -n "We're just getting started. "; fi
    ;;
    *)
@@ -240,19 +242,24 @@ echo
   total_bid=$(sqlite3 playerbase.db "SELECT total_bid FROM teams WHERE name IS '$team'")
   total_tricks=$(sqlite3 playerbase.db "SELECT tricks_taken FROM teams WHERE name IS '$team'")
 
- if [[ $total_tricks -ge $total_bid ]]; then
+ if [[ $total_tricks -ge $total_bid ]]; then # update scores for tricks taken based on bid
   sqlite3 playerbase.db "UPDATE teams SET score=score+'$total_bid'*10+('$total_tricks'-'$total_bid') WHERE name IS '$team'"
-  if [[ $total_tricks -gt $total_bid ]]; then
-   sqlite3 playerbase.db "UPDATE teams SET bags=bags+('$total_tricks'-'$total_bid') WHERE name IS '$team'"
-   total_bags=$(sqlite3 playerbase.db "SELECT bags FROM teams WHERE name IS '$team'")
-   if [[ $total_bags -ge 10 ]]; then
-    sqlite3 playerbase.db "UPDATE teams SET score=score-100 WHERE name IS '$team'"
-    sqlite3 playerbase.db "UPDATE teams SET bags=0 WHERE name IS '$team'"
-   fi
-  fi
-
  else
   sqlite3 playerbase.db "UPDATE teams SET score=score-('$total_bid'*10) WHERE name IS '$team'"
+ fi
+
+ if [[ $total_tricks -gt $total_bid ]]; then # update bags total
+  sqlite3 playerbase.db "UPDATE teams SET bags=bags+'$total_tricks'-'$total_bid' WHERE name IS '$team'"
+  total_bags=$(sqlite3 playerbase.db "SELECT bags FROM teams WHERE name IS '$team'")
+#echo $(sqlite3 playerbase.db "SELECT bags FROM teams WHERE name IS '$team'")
+ fi
+
+ if [[ $total_bags -ge 10 ]]; then
+  sqlite3 playerbase.db "UPDATE teams SET score=score-100 WHERE name IS '$team'"
+echo "reset bags"
+  sqlite3 playerbase.db "UPDATE teams SET bags=0 WHERE name IS '$team'"
+echo $(sqlite3 playerbase.db "UPDATE teams SET bags=0 WHERE name IS '$team'")
+
  fi
 
  team_score=$(sqlite3 playerbase.db "SELECT score FROM teams WHERE name IS '$team'")
@@ -266,11 +273,9 @@ echo
 }
 
 function ending_ceremony {
-
 winning_score=$(sqlite3 playerbase.db "SELECT MAX(score) FROM teams")
 winning_team=$(sqlite3 playerbase.db "SELECT name FROM teams WHERE score IS '$winning_score'")
 echo "Congratulations, ${winning_team} with ${winning_score}!"
-
 }
 
 
