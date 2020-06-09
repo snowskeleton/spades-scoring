@@ -130,10 +130,12 @@ function accept_bid {
 
     case $answer in
    	 yes|y|ye|yse|esy|eys|0)
+     sqlite3 playerbase.db "UPDATE players SET bid = '$bid' WHERE rowID IS '$bidder'"
      sqlite3 playerbase.db "UPDATE players SET blind = 1 WHERE rowID IS '$bidder'"
      echo "Let's hope they're psychic."
     ;;
     *)
+     sqlite3 playerbase.db "UPDATE players SET bid = '$bid' WHERE rowID IS '$bidder'"
      sqlite3 playerbase.db "UPDATE players SET blind = 0 WHERE rowID IS '$bidder'"
      echo "Player has vision."
     ;;
