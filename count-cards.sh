@@ -21,6 +21,7 @@ case $1 in
   gather=false
   current_dealer=$(sqlite3 playerbase.db "SELECT MAX(dealer) FROM players")
   dealer_count=$(sqlite3 playerbase.db "SELECT rowID FROM players WHERE dealer IS '$current_dealer'")
+  ((dealer_count=dealer_count-1))
   shift
   ;;
   *)
