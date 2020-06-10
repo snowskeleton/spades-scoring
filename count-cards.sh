@@ -22,6 +22,8 @@ case $1 in
   current_dealer=$(sqlite3 playerbase.db "SELECT MAX(dealer) FROM players")
   dealer_count=$(sqlite3 playerbase.db "SELECT rowID FROM players WHERE dealer IS '$current_dealer'")
   ((dealer_count=dealer_count-1))
+  if [[ $dealer_count -gt 4 ]]; then dealer_count=1; fi
+   if [[ $dealer_count -lt 1 ]]; then dealer_count=$player_count; fi
   shift
   ;;
   *)
